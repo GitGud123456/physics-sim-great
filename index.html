@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Physics sim</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <canvas id="myCanvas"></canvas>
+  </head>
+
+  <body>
+    <button id="btn">Create Random!</button>
+    <button id="clear">Clear screen</button>
+    <p>
+      bh.m<input id="bhm" type="number" value="0" />
+      bh.r:
+      <input id="bhr" type="number" value="10" />
+      <br />
+      bh.vx:<input id="bhvx" type="number" value="0" /> bh.vy:
+      <input id="bhvy" type="number" value="0" />
+      <br />
+      bh.x<input id="lx" type="number" value="0" /> bh.y<input
+        id="ly"
+        type="number"
+        value="0"
+      />
+    </p>
+
+    <hr />
+    <p>
+      ball mass:<input id="bm" type="number" value="0" /> ball.r:
+      <input id="br" type="number" value="10" />
+      <br />
+      ball.vx:<input id="bvx" type="number" value="0" /> ball.vy:
+      <input id="bvy" type="number" value="0" />
+      <br />
+      ball.x:
+      <input id="bx" type="number" value="100" /> ball.y:<input
+        id="by"
+        type="number"
+        value="100"
+      />
+    </p>
+    <hr />
+    Attraction force <input id="pAF" type="number" value="0" />
+    <br />
+    Air friction <input id="pAf" type="number" value="0.0" />
+    <br />
+    Collision response<input id="pCr" type="number" value="1" />
+    <br />
+    Viscosity <input id="pV" type="number" value="0" />
+    <br />
+    G coefficient <input id="GC" type="number" value="0.0000000000667" />
+    <select id="mct">
+      <option value="bh">black hole</option>
+      <option value="ball">ball</option>
+    </select>
+
+    <!-- <script src="scriptv2.js"></script> -->
+    <!-- <script src="script.js"></script> -->
+    <script src="scriptv3.js"></script>
+  </body>
+</html>
