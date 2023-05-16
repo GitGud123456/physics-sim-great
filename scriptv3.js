@@ -41,7 +41,20 @@ function update() {
     parameterViscosity,
     GravityCoeffcient,
   ] = applyParameters();
-
+  if (holearray.length >= 1) {
+    //grav stuff
+    for (var i = 0; i < holearray.length; i++) {
+      let [G, D, dx, dy, ax, ay] = bGF(holearray[i], this.m, this.x, this.y);
+      var trueDist = distance - (holearray[i].r + this.r);
+      if (trueDist == 0) {
+        // this.x -= Math.sin(angle) * overlap;
+        // this.y -= Math.cos(angle) * overlap;
+        G = 0;
+        ax = 0;
+        ay = 0;
+      }
+    }
+  }
   for (var i = 0; i < objects.length; i++) {
     objects[i].update();
     for (var j = i + 1; j < objects.length; j++) {
@@ -62,18 +75,16 @@ function update() {
         var v2fy =
           (Pinitialy - objects[i].m * (objects[j].vy - objects[i].vy)) /
           (objects[i].m + objects[j].m);
-        objects[i].vx = v1fx * parameterCollisonResponse;
-        objects[i].vy = v1fy * parameterCollisonResponse;
-        objects[j].vx = v2fx * parameterCollisonResponse;
-        objects[j].vy = v2fy * parameterCollisonResponse;
+        objects[i].vx = v1fx;
+        objects[i].vy = v1fy;
+        objects[j].vx = v2fx;
+        objects[j].vy = v2fy;
 
         var dx = objects[i].x - objects[j].x;
         var dy = objects[i].y - objects[j].y;
         var distance = Math.sqrt(dx ** 2 + dy ** 2);
         var overlap = objects[i].r + objects[j].r - distance;
-        var miratio = objects[i].m / objects[j].m;
-        var mjratio = objects[j].m / objects[i].m;
-        if (overlap > 1) {
+        if (overlap > 0) {
           var angle = Math.atan2(dx, dy);
           objects[i].x += (Math.sin(angle) * overlap) / 2;
           objects[j].x -= (Math.sin(angle) * overlap) / 2;
@@ -81,7 +92,6 @@ function update() {
           objects[j].y -= (Math.cos(angle) * overlap) / 2;
         }
       }
-      //[G, D, Dx, Dy] = GF(objects[i], objects[j]);
     }
   }
 }
@@ -105,32 +115,8 @@ Object.prototype.update = function () {
     this.y = canvas.height - this.r;
     this.vy *= -1;
   }
-  if (holearray.length >= 1) {
-    //grav stuff
-
-    for (var i = 0; i < holearray.length; i++) {
-      let [G, D, dx, dy] = bGF(holearray[i], this.m, this.x, this.y);
-      var angle = Math.atan2(dx, dy);
-      let axS = Math.cos(angle) * G;
-      let axC = Math.sin(angle) * G;
-      let ayS = Math.sin(angle) * G;
-      let ayC = Math.cos(angle) * G;
-      var distance = Math.sqrt(dx ** 2 + dy ** 2);
-      var overlap = holearray[i].r + this.r - distance;
-      if (D < holearray[i].r + this.r + 2) {
-        G = 0;
-        axC = 0;
-        axS = 0;
-        this.x -= Math.sin(angle) * overlap;
-        this.y -= Math.cos(angle) * overlap;
-      }
-      this.x += this.vx + Ff(this.m, this.vx) + axC;
-      this.y += this.vy + Ff(this.m, this.vy) + axS;
-    }
-  } else {
-    this.x += this.vx + Ff(this.m, this.vx);
-    this.y += this.vy + Ff(this.m, this.vy);
-  }
+  this.x += this.vx + Ff(this.m, this.vx) + ax;
+  this.y += this.vy + Ff(this.m, this.vy) + ay;
 };
 
 //animate objects
@@ -184,10 +170,13 @@ function bGF(obj1, m, x, y) {
   var D = Math.sqrt((obj1.x - x) ** 2 + (obj1.y - y) ** 2);
   var dx = obj1.x - x;
   var dy = obj1.y - y;
-  if (G > 5) {
-    G = 5;
+  var angle = Math.atan2(dx, dy);
+  var ay = Math.cos(angle) * G;
+  var ax = Math.sin(angle) * G;
+  if (G > 3) {
+    G = 3;
   }
-  return [G, D, dx, dy];
+  return [G, D, dx, dy, ax, ay];
 }
 function GF(obj1, obj2) {
   [
@@ -212,14 +201,14 @@ function areColliding(obj1, obj2) {
   var dx = obj1.x - obj2.x;
   var dy = obj1.y - obj2.y;
   var distance = Math.sqrt(dx ** 2 + dy ** 2);
-  return distance <= obj1.r + obj2.r + 0.5;
+  return distance <= obj1.r + obj2.r;
 }
-function areColliding2(obj1, obj2) {
-  var dx = obj1.x - obj2.x;
-  var dy = obj1.y - obj2.y;
-  var distance = Math.sqrt(dx ** 2 + dy ** 2);
-  return distance <= obj1.r + obj2.r + 5;
-}
+// function areColliding2(obj1, obj2) {
+//   var dx = obj1.x - obj2.x;
+//   var dy = obj1.y - obj2.y;
+//   var distance = Math.sqrt(dx ** 2 + dy ** 2);
+//   return distance <= obj1.r + obj2.r + 5;
+// }
 
 //calc Ff
 function Ff(m, v) {
@@ -270,16 +259,16 @@ function makeRandom() {
 // objects.push(new Object(100, 325, 4, 0, 20, 10));
 // objects.push(new Object(900, 325, -4, 0, 20, 10));
 objects.push(new Object());
-holearray.push(new gravityWell(500, 325, 0, 0, 10, 10));
-for (var i = 0; i < 500; i++) {
-  var x = Math.random() * canvas.width;
-  var y = Math.random() * canvas.height;
-  var vx = Math.random() * 4 - 2;
-  var vy = Math.random() * 4 - 2;
-  var m = Math.random() * 20;
-  var r = m / 2;
-  objects.push(new Object(x, y, vx, vy, m, r));
-}
+//holearray.push(new gravityWell(500, 325, 0, 0, 10, 10));
+// for (var i = 0; i < 500; i++) {
+//   var x = Math.random() * canvas.width;
+//   var y = Math.random() * canvas.height;
+//   var vx = Math.random() * 4 - 2;
+//   var vy = Math.random() * 4 - 2;
+//   var m = Math.random() * 20;
+//   var r = m / 2;
+//   objects.push(new Object(x, y, vx, vy, m, r));
+// }
 
 // for (var i = 0; i < 1000; i++) {
 //   var x = Math.random() * canvas.width;
