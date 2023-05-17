@@ -50,8 +50,8 @@ function update() {
         // this.x -= Math.sin(angle) * overlap;
         // this.y -= Math.cos(angle) * overlap;
         G = 0;
-        ax = 0;
-        ay = 0;
+        // ax = 0;
+        // ay = 0;
       }
     }
   }

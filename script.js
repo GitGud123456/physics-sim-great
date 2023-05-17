@@ -1,181 +1,353 @@
-// const canvas = document.getElementById("myCanvas");
-// canvas.width = 800;
-// canvas.height = 400;
-// let boxX = 100;
-// let boxY = 100;
-// let moreObj = loadObjs();
-// let objInfo = [];
-// const ctx = canvas.getContext("2d");
-// let btn = document.getElementById("btn");
-// btn.addEventListener("click", clearall);
-
-// canvas.addEventListener("click", returnclick);
-
-// requestAnimationFrame(draw);
-// function draw() {
-//   // LOGIC SECTION
-
-//   // DRAW SECTION
-
-//   //background
-//   ctx.fillStyle = "grey";
-//   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-//   // Set the fill style to black
-//   ctx.fillStyle = "black";
-
-//   // Draw a square with the new fill style
-//   ctx.fillRect(boxX, boxY, 20, 20);
-
-//   drawObjs(moreObj);
-
-//   requestAnimationFrame(draw);
-// }
-
-// function returnclick(event) {
-//   let num = +moreObj.length + 1;
-//   const x = event.clientX - canvas.offsetLeft;
-//   const y = event.clientY - canvas.offsetTop;
-//   console.log("Clicked at (" + x + ", " + y + ")");
-//   moreObj.push({ num, x, y });
-//   saveObjs();
-//   loadObjs();
-// }
-
-// function drawObjs(ObjData) {
-//   ctx.fillStyle = "black";
-//   for (let i = 0; i < moreObj.length; i++) {
-//     ctx.beginPath();
-//     ctx.arc(ObjData[i].x, ObjData[i].y, 10, 0, 2 * Math.PI);
-//     ctx.fillStyle = "black";
-//     ctx.fill();
-//   }
-// }
-
-// function clearall() {
-//   moreObj = [];
-//   saveObjs();
-// }
-
-// // save
-// function saveObjs() {
-//   localStorage.setItem("moreObj", JSON.stringify(moreObj));
-// }
-// // load
-// function loadObjs() {
-//   let objectsStr = localStorage.getItem("moreObj");
-//   return JSON.parse(objectsStr);
-// }
-
 var canvas = document.getElementById("myCanvas");
 canvas.width = 1000;
 canvas.height = 750;
 var ctx = canvas.getContext("2d");
 var objects = [];
 canvas.addEventListener("click", returnclick);
-
-function Object(x, y, vx, vy, m) {
-  this.x = x;
-  this.y = y;
-  this.vx = vx;
-  this.vy = vy;
-  this.m = m;
+var holearray = [];
+let select = document.getElementById("mct");
+let btn = document.getElementById("btn");
+let clearbtn = document.getElementById("clear");
+clearbtn.addEventListener("click", clear);
+document.addEventListener("keyup", initialize());
+document.addEventListener("keyup", bhinitialize());
+btn.addEventListener("click", makeRandom, initialize);
+let lastTime = 0;
+let dt = 0.013213999999999998;
+requestAnimationFrame(time);
+// Make Obj at mouse location
+function returnclick(event) {
+  if (select.value == "ball") {
+    var [m, r, vx, vy] = initialize();
+    var x = event.clientX - canvas.offsetLeft;
+    var y = event.clientY - canvas.offsetTop;
+    document.getElementById("by").value = y;
+    document.getElementById("bx").value = x;
+    var ax = 0;
+    var ay = 0;
+    var Fnetx = 0;
+    var Fnety = 0;
+    objects.push(new Object(x, y, vx, vy, m, r, ax, ay, Fnetx, Fnety));
+  } else if (select.value == "bh") {
+    var [bhm, bhr, bhvx, bhvy] = bhinitialize();
+    var x = event.clientX - canvas.offsetLeft;
+    var y = event.clientY - canvas.offsetTop;
+    document.getElementById("by").value = y;
+    document.getElementById("bx").value = x;
+    holearray.push(new gravityWell(x, y, bhvx, bhvy, bhm, bhr));
+  }
 }
 
-Object.prototype.draw = function () {
-  ctx.beginPath();
-  ctx.arc(this.x, this.y, 50, 0, 2 * Math.PI);
-  ctx.fillStyle = "blue";
-  ctx.fill();
-};
-
-function areColliding(obj1, obj2, dist) {
-  var dx = Math.abs(obj1.x - obj2.x);
-  var dy = Math.abs(obj1.y - obj2.y);
-  var distance = Math.sqrt(dx * dx + dy * dy);
-  return distance < 100;
-}
-
-// function areColliding(obj1, obj2) {
-//   var dx = obj1.x - obj2.x;
-//   var dy = obj1.y - obj2.y;
-//   return distance < 100;
-// }
-
-function GF(m1, bhx, bhy, r1, m2, ballx, bally, r2) {
-  var G = m1 / Math.sqrt((bhx - ballx) ** 2 + (bhy - bally) ** 2) ** 2;
-  var D = Math.sqrt((bhx - ballx) ** 2 + (bhy - bally) ** 2);
-  return [G, D];
-}
-
+// motion stuff
 function update() {
+  [
+    parameterAttractionFroce,
+    parameterAirFriction,
+    parameterCollisonResponse,
+    parameterViscosity,
+    GravityCoeffcient,
+  ] = applyParameters();
+
   for (var i = 0; i < objects.length; i++) {
     objects[i].update();
     for (var j = i + 1; j < objects.length; j++) {
       if (areColliding(objects[i], objects[j])) {
-        var dx = objects[i].x - objects[j].x;
-        var dy = objects[i].y - objects[j].y;
-        var v1 = Math.sqrt(objects[i].vx ** 2 + objects[i].vy ** 2);
-        var v2 = Math.sqrt(objects[j].vx ** 2 + objects[j].vy ** 2);
-        nv1 = v1 - v2;
+        var Pinitialx =
+          objects[i].vx * objects[i].m + objects[j].vx * objects[j].m;
+        var Pinitialy =
+          objects[i].vy * objects[i].m + objects[j].vy * objects[j].m;
+        var v1fx =
+          (Pinitialx - objects[j].m * (objects[i].vx - objects[j].vx)) /
+          (objects[i].m + objects[j].m);
+        var v2fx =
+          (Pinitialx - objects[i].m * (objects[j].vx - objects[i].vx)) /
+          (objects[i].m + objects[j].m);
+        var v1fy =
+          (Pinitialy - objects[j].m * (objects[i].vy - objects[j].vy)) /
+          (objects[i].m + objects[j].m);
+        var v2fy =
+          (Pinitialy - objects[i].m * (objects[j].vy - objects[i].vy)) /
+          (objects[i].m + objects[j].m);
+        objects[i].vx = v1fx;
+        objects[i].vy = v1fy;
+        objects[j].vx = v2fx;
+        objects[j].vy = v2fy;
 
         var dx = objects[i].x - objects[j].x;
         var dy = objects[i].y - objects[j].y;
-        var distance = Math.sqrt(dx * dx + dy * dy);
-        var overlap = 100 - distance;
-        objects[i].vx += (dx / distance) * overlap;
-        objects[i].vy += (dy / distance) * overlap;
-        objects[j].vx -= (dx / distance) * overlap;
-        objects[j].vy -= (dy / distance) * overlap;
+        var distance = Math.sqrt(dx ** 2 + dy ** 2);
+        var overlap = objects[i].r + objects[j].r - distance;
+        if (overlap > 0) {
+          var angle = Math.atan2(dx, dy);
+          objects[i].x += (Math.sin(angle) * overlap) / 2;
+          objects[j].x -= (Math.sin(angle) * overlap) / 2;
+          objects[i].y += (Math.cos(angle) * overlap) / 2;
+          objects[j].y -= (Math.cos(angle) * overlap) / 2;
+        }
       }
     }
   }
 }
 
+//update Obj position
 Object.prototype.update = function () {
-  var dx = canvas.width / 2 - this.x;
-  var dy = canvas.height / 2 - this.y;
-  var distance = Math.sqrt(dx * dx + dy * dy);
-  var acceleration = distance / 1000;
-  this.vx += (dx / distance) * acceleration;
-  this.vy += (dy / distance) * acceleration;
-  this.x += this.vx;
-  this.y += this.vy;
+  //safety
+  if (this.x <= 0 + this.r) {
+    this.x = 0 + this.r;
+    this.vx *= -1;
+  }
+  if (this.x >= canvas.width - this.r) {
+    this.x = canvas.width - this.r;
+    this.vx *= -1;
+  }
+  if (this.y <= 0 + this.r) {
+    this.y = 0 + this.r;
+    this.vy *= -1;
+  }
+  if (this.y >= canvas.height - this.r) {
+    this.y = canvas.height - this.r;
+    this.vy *= -1;
+  }
+  this.Fnetx = (this.vx + Ff(this.m, this.vx) + this.ax) * dt;
+  this.Fnety = (this.vy + Ff(this.m, this.vy) + this.ay) * dt;
+  console.log(this.x, this.vx, this.Fnetx);
+  this.x += this.Fnetx;
+  this.y += this.Fnety;
 };
 
-function returnclick(event) {
-  console.log("1");
-  const x = event.clientX - canvas.offsetLeft;
-  const y = event.clientY - canvas.offsetTop;
-  var vx = Math.random() * 4 - 2;
-  var vy = Math.random() * 4 - 2;
-  objects.push(new Object(x, y, vx, vy));
-}
+//animate objects
+Object.prototype.draw = function () {
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI);
+  ctx.fillStyle = "blue";
+  ctx.fill();
+};
+//animate black holes
+gravityWell.prototype.draw = function () {
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI);
+  ctx.fillStyle = "black";
+  ctx.fill();
+};
 
-// for (var i = 0; i < 1000; i++) {
-//   var x = Math.random() * canvas.width;
-//   var y = Math.random() * canvas.height;
-//   var vx = Math.random() * 4 - 2;
-//   var vy = Math.random() * 4 - 2;
-//   objects.push(new Object(x, y, vx, vy));
-// }
+//loop
 function animate() {
   requestAnimationFrame(animate);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  //grav bh stuff
+  for (var i = 0; i < holearray.length; i++) {
+    holearray[i].draw();
+  }
+  //end
   for (var i = 0; i < objects.length; i++) {
     objects[i].draw();
-    // objects[i].update();
+    //objects[i].update();
   }
 
   update();
+  requestAnimationFrame(time);
 }
 
 animate();
 
-// for (var i = 0; i < 1; i++) {
+//helper Functions
+
+function bGF(obj1, m, x, y) {
+  [
+    parameterAttractionFroce,
+    parameterAirFriction,
+    parameterCollisonResponse,
+    parameterViscosity,
+    GravityCoeffcient,
+  ] = applyParameters();
+
+  var G =
+    (GravityCoeffcient * obj1.m * m) /
+    Math.sqrt((obj1.x - x) ** 2 + (obj1.y - y) ** 2) ** 2;
+  var D = Math.sqrt((obj1.x - x) ** 2 + (obj1.y - y) ** 2);
+  var dx = obj1.x - x;
+  var dy = obj1.y - y;
+  var angle = Math.atan2(dx, dy);
+  var ay = Math.cos(angle) * G;
+  var ax = Math.sin(angle) * G;
+  if (G > 3) {
+    G = 3;
+  }
+  return [G, D, dx, dy, ax, ay];
+}
+function GF(obj1, obj2) {
+  [
+    parameterAttractionFroce,
+    parameterAirFriction,
+    parameterCollisonResponse,
+    parameterViscosity,
+    GravityCoeffcient,
+  ] = applyParameters();
+  console.log([obj1, obj2]);
+  var G =
+    (GravityCoeffcient * obj1.m * obj2.m) /
+    Math.sqrt((obj1.x - obj2.x) ** 2 + (obj1.y - obj2.y) ** 2) ** 2;
+  var D = Math.sqrt((obj1.x - obj2.x) ** 2 + (obj1.y - obj2.y) ** 2);
+  var dx = obj1.x - obj2.x;
+  var dy = obj1.y - obj2.y;
+  return [G, D, dx, dy];
+}
+
+//check collison
+function areColliding(obj1, obj2) {
+  var dx = obj1.x - obj2.x;
+  var dy = obj1.y - obj2.y;
+  var distance = Math.sqrt(dx ** 2 + dy ** 2);
+  return distance <= obj1.r + obj2.r;
+}
+// function areColliding2(obj1, obj2) {
+//   var dx = obj1.x - obj2.x;
+//   var dy = obj1.y - obj2.y;
+//   var distance = Math.sqrt(dx ** 2 + dy ** 2);
+//   return distance <= obj1.r + obj2.r + 5;
+// }
+
+//calc Ff
+function Ff(m, Fnet) {
+  [
+    parameterAttractionFroce,
+    parameterAirFriction,
+    parameterCollisonResponse,
+    parameterViscosity,
+    GravityCoeffcient,
+  ] = applyParameters();
+  var F = 0;
+
+  F = m * parameterAirFriction; // F coefficent x mass
+  if (Fnet > 0) {
+    F *= -1;
+  }
+  if (Math.abs(F) > Math.abs(Fnet)) {
+    F = -Fnet;
+  }
+  if (Fnet == 0) {
+    F = 0;
+  }
+
+  return F;
+}
+
+// create Obj
+function Object(x, y, vx, vy, m, r, ax, ay, Fnetx, Fnety) {
+  this.x = x;
+  this.y = y;
+  this.vx = vx;
+  this.vy = vy;
+  this.m = m;
+  this.r = r;
+  this.ax = ax;
+  this.ay = ay;
+  this.Fnetx = Fnetx;
+  this.Fnety = Fnetx;
+}
+//test objects
+
+//make random obj
+function makeRandom() {
+  var x = Math.random() * canvas.width;
+  var y = Math.random() * canvas.height;
+  var vx = Math.random() * 4;
+  var vy = Math.random() * 4;
+  var m = Math.random() * 100;
+  var r = m / 2;
+  var ax = Math.random() * 2;
+  var ay = Math.random() * 2;
+  objects.push(new Object(x, y, vx, vy, m, r, ax, ay));
+}
+// objects.push(new Object(100, 325, 4, 0, 20, 10));
+// objects.push(new Object(900, 325, -4, 0, 20, 10));
+
+//holearray.push(new gravityWell(500, 325, 0, 0, 10, 10));
+// for (var i = 0; i < 500; i++) {
 //   var x = Math.random() * canvas.width;
 //   var y = Math.random() * canvas.height;
 //   var vx = Math.random() * 4 - 2;
 //   var vy = Math.random() * 4 - 2;
-//   objects.push(new Object(x, y, vx, vy));
+//   var m = Math.random() * 20;
+//   var r = m / 2;
+//   objects.push(new Object(x, y, vx, vy, m, r));
 // }
+
+// for (var i = 0; i < 1000; i++) {
+//   var x = Math.random() * canvas.width;
+//   var y = Math.random() * canvas.height;
+//   // var vx = Math.random() * 4 - 2;
+//   // var vy = Math.random() * 4 - 2;
+//   var m = Math.random() * 20;
+//   var r = m / 2;
+
+//   var vx = 0;
+//   var vy = 0;
+//   objects.push(new Object(x, y, vx, vy, i / 80, i / 80));
+//   // if (i < 200) {
+//   //   objects.push(new Object(x, y, vx, vy, 1, 1));
+//   // } else if (i < 400) {
+//   //   objects.push(new Object(x, y, vx, vy, 3, 3));
+//   // } else if (i < 600) {
+//   //   objects.push(new Object(x, y, vx, vy, 4, 4));
+//   // } else if (i < 800) {
+//   //   objects.push(new Object(x, y, vx, vy, 5, 5));
+//   // }
+// }
+
+//initialize Parameters
+function applyParameters() {
+  parameterAttractionFroce = +document.getElementById("pAF").value;
+  parameterAirFriction = +document.getElementById("pAf").value;
+  parameterCollisonResponse = +document.getElementById("pCr").value;
+  parameterViscosity = +document.getElementById("pV").value;
+  GravityCoeffcient = +document.getElementById("GC").value;
+  return [
+    parameterAttractionFroce,
+    parameterAirFriction,
+    parameterCollisonResponse,
+    parameterViscosity,
+    GravityCoeffcient,
+  ];
+}
+
+//initalize ball values
+function initialize() {
+  bm = +document.getElementById("bm").value;
+  bvx = +document.getElementById("bvx").value;
+  bvy = +document.getElementById("bvy").value;
+  br = +document.getElementById("br").value;
+  return [bm, br, bvx, bvy];
+}
+//initalize bh values
+function bhinitialize() {
+  bhm = +document.getElementById("bhm").value;
+  bhvx = +document.getElementById("bhvx").value;
+  bhvy = +document.getElementById("bhvy").value;
+  bhr = +document.getElementById("bhr").value;
+  return [bhm, bhr, bhvx, bhvy];
+}
+
+//clear objects
+function clear() {
+  objects = [];
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// grav stuff
+
+function gravityWell(x, y, vx, vy, m, r) {
+  this.x = x;
+  this.y = y;
+  this.vx = vx;
+  this.vy = vy;
+  this.m = m;
+  this.r = r;
+}
+
+function time(time) {
+  dt = (time - lastTime) / 1000;
+  // console.log(dt, time, lastTime);
+  lastTime = time;
+  return dt;
+}
