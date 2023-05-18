@@ -11,10 +11,14 @@ let clearbtn = document.getElementById("clear");
 clearbtn.addEventListener("click", clear);
 document.addEventListener("keyup", initialize());
 document.addEventListener("keyup", bhinitialize());
-btn.addEventListener("click", makeRandom, initialize);
+
+btn.addEventListener("click", makeRandom);
 let lastTime = 0;
 let dt = 0.013213999999999998;
 requestAnimationFrame(time);
+let parameters = [];
+document.addEventListener("keyup", applyParameters());
+
 // Make Obj at mouse location
 function returnclick(event) {
   if (select.value == "ball") {
@@ -40,14 +44,6 @@ function returnclick(event) {
 
 // motion stuff
 function update() {
-  [
-    parameterAttractionFroce,
-    parameterAirFriction,
-    parameterCollisonResponse,
-    parameterViscosity,
-    GravityCoeffcient,
-  ] = applyParameters();
-
   for (var i = 0; i < objects.length; i++) {
     objects[i].update();
     for (var j = i + 1; j < objects.length; j++) {
@@ -108,11 +104,14 @@ Object.prototype.update = function () {
     this.y = canvas.height - this.r;
     this.vy *= -1;
   }
-  this.Fnetx = (this.vx + Ff(this.m, this.vx) + this.ax) * dt;
-  this.Fnety = (this.vy + Ff(this.m, this.vy) + this.ay) * dt;
-  console.log(this.x, this.vx, this.Fnetx);
-  this.x += this.Fnetx;
-  this.y += this.Fnety;
+  [ax, ay] = GF(this.ax, this.ay);
+  this.ax = ax;
+  this.ay = ay;
+  this.Fnetx = (Ff(this.m, this.vx) + this.ax) * dt;
+  this.Fnety = (Ff(this.m, this.vy) + this.ay) * dt;
+  console.log(this.x, this.vx, this.ax, "Y", this.y, this.vy, this, ay);
+  this.x += (this.vx + this.ax) * dt;
+  this.y += (this.vy + this.ay) * dt;
 };
 
 //animate objects
@@ -132,6 +131,7 @@ gravityWell.prototype.draw = function () {
 
 //loop
 function animate() {
+  parameters = applyParameters();
   requestAnimationFrame(animate);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   //grav bh stuff
@@ -145,6 +145,7 @@ function animate() {
   }
 
   update();
+
   requestAnimationFrame(time);
 }
 
@@ -153,16 +154,8 @@ animate();
 //helper Functions
 
 function bGF(obj1, m, x, y) {
-  [
-    parameterAttractionFroce,
-    parameterAirFriction,
-    parameterCollisonResponse,
-    parameterViscosity,
-    GravityCoeffcient,
-  ] = applyParameters();
-
   var G =
-    (GravityCoeffcient * obj1.m * m) /
+    (parameters[0].GravityCoeffcient * obj1.m * m) /
     Math.sqrt((obj1.x - x) ** 2 + (obj1.y - y) ** 2) ** 2;
   var D = Math.sqrt((obj1.x - x) ** 2 + (obj1.y - y) ** 2);
   var dx = obj1.x - x;
@@ -175,22 +168,31 @@ function bGF(obj1, m, x, y) {
   }
   return [G, D, dx, dy, ax, ay];
 }
-function GF(obj1, obj2) {
-  [
-    parameterAttractionFroce,
-    parameterAirFriction,
-    parameterCollisonResponse,
-    parameterViscosity,
-    GravityCoeffcient,
-  ] = applyParameters();
-  console.log([obj1, obj2]);
-  var G =
-    (GravityCoeffcient * obj1.m * obj2.m) /
-    Math.sqrt((obj1.x - obj2.x) ** 2 + (obj1.y - obj2.y) ** 2) ** 2;
-  var D = Math.sqrt((obj1.x - obj2.x) ** 2 + (obj1.y - obj2.y) ** 2);
-  var dx = obj1.x - obj2.x;
-  var dy = obj1.y - obj2.y;
-  return [G, D, dx, dy];
+function GF(ax, ay) {
+  if (holearray.length > 0) {
+    for (var i = 0; i < holearray.length; i++) {
+      for (var j = 0; j < objects.length; j++) {
+        var dx = holearray[i].x - objects[j].x;
+        var dy = holearray[i].y - objects[j].y;
+        var angle = Math.atan2(dx, dy);
+
+        ax = Math.cos(angle) * parameters[0].parameterAttractionFroce;
+        ay = Math.sin(angle) * parameters[0].parameterAttractionFroce;
+        if (holearray[i].x < objects[j].x) {
+          ax *= -1;
+        }
+        if (holearray[i].y < objects[j].y) {
+          ay *= -1;
+        }
+      }
+    }
+
+    return [ax, ay];
+  } else {
+    ax = 0;
+    ax = 0;
+    return [ax, ay];
+  }
 }
 
 //check collison
@@ -200,25 +202,11 @@ function areColliding(obj1, obj2) {
   var distance = Math.sqrt(dx ** 2 + dy ** 2);
   return distance <= obj1.r + obj2.r;
 }
-// function areColliding2(obj1, obj2) {
-//   var dx = obj1.x - obj2.x;
-//   var dy = obj1.y - obj2.y;
-//   var distance = Math.sqrt(dx ** 2 + dy ** 2);
-//   return distance <= obj1.r + obj2.r + 5;
-// }
 
 //calc Ff
 function Ff(m, Fnet) {
-  [
-    parameterAttractionFroce,
-    parameterAirFriction,
-    parameterCollisonResponse,
-    parameterViscosity,
-    GravityCoeffcient,
-  ] = applyParameters();
   var F = 0;
-
-  F = m * parameterAirFriction; // F coefficent x mass
+  F = m * parameters[0].parameterAirFriction; // F coefficent x mass
   if (Fnet > 0) {
     F *= -1;
   }
@@ -302,12 +290,15 @@ function applyParameters() {
   parameterCollisonResponse = +document.getElementById("pCr").value;
   parameterViscosity = +document.getElementById("pV").value;
   GravityCoeffcient = +document.getElementById("GC").value;
+
   return [
-    parameterAttractionFroce,
-    parameterAirFriction,
-    parameterCollisonResponse,
-    parameterViscosity,
-    GravityCoeffcient,
+    {
+      parameterAttractionFroce,
+      parameterAirFriction,
+      parameterCollisonResponse,
+      parameterViscosity,
+      GravityCoeffcient,
+    },
   ];
 }
 
