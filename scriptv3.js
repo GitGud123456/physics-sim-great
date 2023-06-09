@@ -101,19 +101,19 @@ Object.prototype.update = function () {
   //safety
   if (this.x <= 0 + this.r) {
     this.x = 0 + this.r;
-    this.vx *= -1;
+    this.vx *= -0.9;
   }
   if (this.x >= canvas.width - this.r) {
     this.x = canvas.width - this.r;
-    this.vx *= -1;
+    this.vx *= -0.9;
   }
   if (this.y <= 0 + this.r) {
     this.y = 0 + this.r;
-    this.vy *= -1;
+    this.vy *= -0.9;
   }
   if (this.y >= canvas.height - this.r) {
     this.y = canvas.height - this.r;
-    this.vy *= -1;
+    this.vy *= -0.9;
   }
   this.x += this.vx + Ff(this.m, this.vx) + ax;
   this.y += this.vy + Ff(this.m, this.vy) + ay;
