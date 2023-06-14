@@ -17,6 +17,9 @@ btn.addEventListener("click", makeRandom, initialize);
 let lastTime = 0;
 let dt = 0.013213999999999998;
 requestAnimationFrame(time);
+let parameters = [];
+document.addEventListener("keyup", applyParameters());
+
 // Make Obj at mouse location
 function returnclick(event) {
   if (select.value == "ball") {
@@ -153,6 +156,7 @@ gravityWell.prototype.draw = function () {
 
 //loop
 function animate() {
+  parameters = applyParameters();
   requestAnimationFrame(animate);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   //grav bh stuff
