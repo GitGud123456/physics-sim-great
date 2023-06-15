@@ -13,12 +13,15 @@ document.addEventListener("keyup", initialize());
 document.addEventListener("keyup", bhinitialize());
 let parametersarray = [];
 document.addEventListener("keyup", applyParameters());
-btn.addEventListener("click", makeRandom, initialize);
+btn.addEventListener("click", makeRandom);
 let lastTime = 0;
 let dt = 0.013213999999999998;
 requestAnimationFrame(time);
 let parameters = [];
 document.addEventListener("keyup", applyParameters());
+let framebtn = false;
+let sdbtn = document.getElementById("sd");
+sdbtn.addEventListener("click", frameratedown);
 
 // Make Obj at mouse location
 function returnclick(event) {
@@ -34,12 +37,12 @@ function returnclick(event) {
     var Fnety;
     objects.push(new Object(x, y, vx, vy, m, r, ax, ay, Fnetx, Fnety));
   } else if (select.value == "bh") {
-    var [bhm, bhr, bhvx, bhvy] = bhinitialize();
+    var [bhm, bhr] = bhinitialize();
     var x = event.clientX - canvas.offsetLeft;
     var y = event.clientY - canvas.offsetTop;
     document.getElementById("by").value = y;
     document.getElementById("bx").value = x;
-    holearray.push(new gravityWell(x, y, bhvx, bhvy, bhm, bhr));
+    holearray.push(new gravityWell(x, y, bhm, bhr));
   }
 }
 
@@ -92,22 +95,18 @@ Object.prototype.update = function () {
   if (this.x <= 0 + this.r) {
     this.x = 0 + this.r;
     this.vx *= -0.9;
-    this.ax *= -0.9;
   }
   if (this.x >= canvas.width - this.r) {
     this.x = canvas.width - this.r;
     this.vx *= -0.9;
-    this.ax *= -0.9;
   }
   if (this.y <= 0 + this.r) {
     this.y = 0 + this.r;
     this.vy *= -0.9;
-    this.ay *= -0.9;
   }
   if (this.y >= canvas.height - this.r) {
     this.y = canvas.height - this.r;
     this.vy *= -0.9;
-    this.ay *= -0.9;
   }
   if (holearray.length >= 1) {
     for (var bh = 0; bh < holearray.length; bh++) {
@@ -117,25 +116,30 @@ Object.prototype.update = function () {
         this.m,
         holearray[bh].m,
         holearray[bh].x,
-        holearray[bh].y
+        holearray[bh].y,
+        this.r
       );
-      console.log(Gx);
-      this.Fnetx = this.ax + Ff(this.m, this.vx) - Gx;
-      this.Fnety = this.ay + Ff(this.m, this.vy) + Gy;
-      this.vx += this.Fnetx * dt;
-      this.vy += this.Fnety * dt;
 
-      this.x += this.vx * dt;
-      this.y += this.vy * dt;
+      this.Fnetx = Ff(this.m, this.vx) + Gx + this.vx;
+      this.Fnety = Ff(this.m, this.vy) + Gy + this.vy;
+      if (D < this.r) {
+        this.Fnetx *= 0.9;
+        this.Fnety *= 0.9;
+      }
+      this.x += this.Fnetx * dt;
+      this.y += this.Fnety * dt;
+
+      // this.x += this.vx * dt;
+      // this.y += this.vy * dt;
     }
   } else {
-    this.Fnetx = this.ax + Ff(this.m, this.vx);
-    this.Fnety = this.ay + Ff(this.m, this.vy);
-    this.vx += this.Fnetx * dt;
-    this.vy += this.Fnety * dt;
+    this.Fnetx = Ff(this.m, this.vx) + this.vx;
+    this.Fnety = Ff(this.m, this.vy) + this.vy;
+    this.x += this.Fnetx * dt;
+    this.y += this.Fnety * dt;
 
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
+    // this.x += this.vx * dt;
+    // this.y += this.vy * dt;
   }
 };
 
@@ -173,35 +177,24 @@ function animate() {
   parametersarray = applyParameters();
 }
 animate();
-//setInterval(animate, dt);
+let myint;
+function frameratedown() {
+  setInterval(animate, dt);
+}
 
 //helper Functions
 
-function bGF(x1, y1, m1, m2, x2, y2) {
-  var G =
-    (parametersarray[0].GravityCoeffcient * m1 * m2) /
-    Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 2;
-  var D = Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
-  var dx = x1 - x2;
-  var dy = y1 - y2;
-  var angle = Math.atan2(dx, dy);
+function bGF(x1, y1, m1, m2, x2, y2, r1) {
+  var D = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+  var G = parameters[0].GravityCoeffcient * m2;
+  var dx = x2 - x1;
+  var dy = y2 - y1;
+  var angle = Math.atan2(dy, dx);
+
   var Gy = Math.sin(angle) * G;
   var Gx = Math.cos(angle) * G;
-  // if (G > 3) {
-  //   G = 3;
-  // }
-  console.log(Gx);
+
   return [G, Gx, Gy, D, dx, dy];
-}
-function GF(obj1, obj2) {
-  //console.log([obj1, obj2]);
-  var G =
-    (parametersarray[0].GravityCoeffcient * obj1.m * obj2.m) /
-    Math.sqrt((obj1.x - obj2.x) ** 2 + (obj1.y - obj2.y) ** 2) ** 2;
-  var D = Math.sqrt((obj1.x - obj2.x) ** 2 + (obj1.y - obj2.y) ** 2);
-  var dx = obj1.x - obj2.x;
-  var dy = obj1.y - obj2.y;
-  return [G, D, dx, dy];
 }
 
 //check collison
@@ -225,7 +218,6 @@ function Ff(m, Fnet) {
   if (Fnet == 0) {
     F = 0;
   }
-  console.log(F);
   return F;
 }
 
@@ -256,43 +248,20 @@ function makeRandom() {
   var ay = Math.random() * 2;
   objects.push(new Object(x, y, vx, vy, m, r, ax, ay));
 }
-// objects.push(new Object(100, 325, 4, 0, 20, 10));
-// objects.push(new Object(900, 325, -4, 0, 20, 10));
 
-//holearray.push(new gravityWell(500, 325, 0, 0, 10, 10));
-for (var i = 0; i < 500; i++) {
+for (var i = 0; i < 400; i++) {
   var x = Math.random() * canvas.width;
   var y = Math.random() * canvas.height;
   var vx = Math.random() * 4 - 2;
   var vy = Math.random() * 4 - 2;
-  var m = Math.random() * 20;
-  var r = m / 2;
+  // var m = Math.random() * 20;
+  // var r = m / 2;
+  var m = 10;
+  var r = m;
   var ax = Math.random() * 2;
   var ay = Math.random() * 2;
   objects.push(new Object(x, y, vx, vy, m, r, ax, ay));
 }
-
-// for (var i = 0; i < 1000; i++) {
-//   var x = Math.random() * canvas.width;
-//   var y = Math.random() * canvas.height;
-//   // var vx = Math.random() * 4 - 2;
-//   // var vy = Math.random() * 4 - 2;
-//   var m = Math.random() * 20;
-//   var r = m / 2;
-
-//   var vx = 0;
-//   var vy = 0;
-//   objects.push(new Object(x, y, vx, vy, i / 80, i / 80));
-//   // if (i < 200) {
-//   //   objects.push(new Object(x, y, vx, vy, 1, 1));
-//   // } else if (i < 400) {
-//   //   objects.push(new Object(x, y, vx, vy, 3, 3));
-//   // } else if (i < 600) {
-//   //   objects.push(new Object(x, y, vx, vy, 4, 4));
-//   // } else if (i < 800) {
-//   //   objects.push(new Object(x, y, vx, vy, 5, 5));
-//   // }
-// }
 
 //initialize Parameters
 function applyParameters() {
@@ -325,10 +294,9 @@ function initialize() {
 //initalize bh values
 function bhinitialize() {
   bhm = +document.getElementById("bhm").value;
-  bhvx = +document.getElementById("bhvx").value;
-  bhvy = +document.getElementById("bhvy").value;
+
   bhr = +document.getElementById("bhr").value;
-  return [bhm, bhr, bhvx, bhvy];
+  return [bhm, bhr];
 }
 
 //clear objects
@@ -339,11 +307,9 @@ function clear() {
 
 // grav stuff
 
-function gravityWell(x, y, vx, vy, m, r) {
+function gravityWell(x, y, m, r) {
   this.x = x;
   this.y = y;
-  this.vx = vx;
-  this.vy = vy;
   this.m = m;
   this.r = r;
 }
